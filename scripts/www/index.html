@@ -1,11 +1,961 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#5B9BD5">
+    <meta name="description" content="轻量化本地工时管理工具">
+    <title>工时管理</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
+        html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+        :root {
+            --primary-color: #5B9BD5;
+            --primary-light: #E3F2FD;
+            --primary-dark: #4A8AC7;
+            --primary-selected: #BBDEFB;
+            --bg-gradient: linear-gradient(145deg, #f5f7fa 0%, #e8ecf0 100%);
+            --text-primary: #2C3E50;
+            --text-secondary: #5D6D7E;
+            --text-light: #8E99A4;
+            --text-label: #7F8C8D;
+            --workday-bg: #E3F2FD;
+            --workday-border: #BBDEFB;
+            --overtime-bg: #FFF3E0;
+            --overtime-border: #FFE0B2;
+            --holiday-bg: #F3E5F5;
+            --holiday-border: #E1BEE7;
+            --rest-bg: #F5F5F5;
+            --rest-border: #E0E0E0;
+            --success-color: #27AE60;
+            --danger-color: #E74C3C;
+            --warning-color: #FFC107;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-bg-dark: rgba(255, 255, 255, 0.9);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif; background: var(--bg-gradient); color: var(--text-primary); min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
+        .app-container { max-width: 100%; margin: 0 auto; background: transparent; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; gap: 12px; padding: 12px; padding-top: max(12px, var(--safe-top)); padding-bottom: max(12px, var(--safe-bottom)); }
+        @media (min-width: 768px) { .app-container { max-width: 560px; margin: 20px auto; padding: 20px; gap: 16px; min-height: auto; } }
+        
+        .header { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; padding: 16px 20px; border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-md); }
+        .header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        
+        .month-nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+        .month-nav button { width: 44px; height: 44px; border: none; background: var(--primary-light); color: var(--primary-color); border-radius: 50%; font-size: 1.5rem; font-weight: 300; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); touch-action: manipulation; }
+        .month-nav button:hover { background: var(--primary-color); color: white; transform: scale(1.05); }
+        .month-nav button:active { transform: scale(0.95); }
+        .current-month { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); flex: 1; text-align: center; }
+        
+        .batch-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+        .batch-actions button { min-width: 70px; min-height: 36px; padding: 8px 14px; border: 1px solid rgba(0, 0, 0, 0.08); background: white; color: var(--text-secondary); border-radius: 9999px; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.25s ease; touch-action: manipulation; }
+        .batch-actions button:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--primary-light); }
+        .batch-actions button:active { transform: scale(0.96); }
+        .batch-actions button.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        
+        .selected-info { display: none; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; }
+        .selected-info.show { display: flex; }
+        .selected-info .count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; background: white; color: var(--primary-color); border-radius: 50%; font-size: 0.75rem; font-weight: 700; }
+        
+        .batch-edit-btn { display: none; padding: 8px 16px; border: 2px solid var(--primary-color); background: white; color: var(--primary-color); border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: all 0.25s ease; touch-action: manipulation; }
+        .batch-edit-btn.show { display: flex; align-items: center; gap: 4px; }
+        .batch-edit-btn:hover { background: var(--primary-color); color: white; }
+        .batch-edit-btn:active { transform: scale(0.96); }
+        
+        .calendar { padding: 10px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 0; margin-bottom: 4px; width: 100%; box-sizing: border-box; }
+        .calendar-header div { text-align: center; padding: 4px 0; font-size: 0.6875rem; font-weight: 600; color: var(--text-light); display: flex; align-items: center; justify-content: center; margin: 0; }
+        .calendar-header .sunday { color: #E57373; }
+        .calendar-header .saturday { color: #FFB74D; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 0; width: 100%; box-sizing: border-box; }
+        
+        .calendar-cell { aspect-ratio: 1; padding: 4px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; position: relative; border: 1.5px solid transparent; touch-action: manipulation; margin: 0; }
+        @media (min-width: 400px) { .calendar-cell { padding: 6px; min-height: 70px; } }
+        .calendar-cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+        .calendar-cell:active { transform: scale(0.97); }
+        .calendar-cell.workday { background: var(--workday-bg); border-color: var(--workday-border); }
+        .calendar-cell.overtime { background: var(--overtime-bg); border-color: var(--overtime-border); }
+        .calendar-cell.holiday { background: var(--holiday-bg); border-color: var(--holiday-border); }
+        .calendar-cell.rest { background: var(--rest-bg); border-color: var(--rest-border); }
+        .calendar-cell.empty { background: transparent; cursor: default; }
+        .calendar-cell.empty:hover { transform: none; box-shadow: none; }
+        
+        .calendar-cell.selected { background: var(--primary-selected) !important; border: 2px solid var(--primary-color) !important; box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4) !important; transform: scale(1.03); }
+        .calendar-cell.selected:hover { transform: scale(1.05); }
+        
+        /* 单元格内部布局 - 日期 + 工时 + 时薪 + 加班 */
+        .cell-date { font-size: 0.75rem; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 2px; }
+        .sunday .cell-date { color: #D32F2F; }
+        .saturday .cell-date { color: #E65100; }
+        .cell-hours { font-size: 0.5625rem; font-weight: 600; color: var(--primary-color); line-height: 1.2; margin-bottom: 1px; }
+        .cell-rate { font-size: 0.5rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 1px; }
+        .cell-overtime { font-size: 0.5rem; font-weight: 600; color: #E91E63; line-height: 1.2; }
+        @media (min-width: 400px) { .cell-date { font-size: 0.875rem; } .cell-hours { font-size: 0.625rem; } .cell-rate { font-size: 0.5625rem; } .cell-overtime { font-size: 0.5625rem; } }
+        
+        /* 节假日图标 - 已隐藏，节假日功能仍可在弹窗中查看和编辑 */
+        .holiday-icon { display: none; }
+        
+        /* 选中对勾 */
+        .selected-check { position: absolute; bottom: 3px; right: 3px; width: 14px; height: 14px; background: var(--primary-color); border-radius: 50%; display: none; align-items: center; justify-content: center; color: white; font-size: 0.625rem; font-weight: 700; box-shadow: 0 2px 6px rgba(91, 155, 213, 0.5); z-index: 10; }
+        @media (min-width: 400px) { .selected-check { width: 16px; height: 16px; font-size: 0.6875rem; bottom: 4px; right: 4px; } }
+        .calendar-cell.selected .selected-check { display: flex; }
+        
+        .today-indicator { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background: var(--danger-color); border-radius: 50%; box-shadow: 0 2px 4px rgba(231, 76, 60, 0.4); z-index: 5; }
+        
+        .color-legend { display: flex; justify-content: center; gap: 16px; padding: 8px 12px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radius-md); font-size: 0.6875rem; color: var(--text-secondary); }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+        .legend-dot.workday { background: var(--workday-bg); border: 1px solid var(--workday-border); }
+        .legend-dot.overtime { background: var(--overtime-bg); border: 1px solid var(--overtime-border); }
+        .legend-dot.holiday { background: var(--holiday-bg); border: 1px solid var(--holiday-border); }
+        .legend-dot.rest { background: var(--rest-bg); border: 1px solid var(--rest-border); }
+        
+        .statistics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px; background: var(--glass-bg-dark); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+        .stat-item { background: white; border-radius: var(--radius-md); padding: 12px 8px; text-align: center; box-shadow: var(--shadow-sm); transition: all 0.25s ease; }
+        .stat-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-item.rate-item { cursor: pointer; }
+        .stat-item.rate-item:hover { background: var(--primary-light); }
+        .stat-label { font-size: 0.625rem; color: var(--text-light); margin-bottom: 4px; white-space: nowrap; }
+        .stat-value { font-size: 1rem; font-weight: 700; color: var(--primary-color); }
+        @media (min-width: 400px) { .stat-label { font-size: 0.6875rem; } .stat-value { font-size: 1.125rem; } }
+        .stat-value.secondary { color: #FF9800; }
+        .stat-value.total { color: var(--success-color); }
+        .stat-value.rate { color: var(--primary-color); font-size: 0.875rem; display: flex; align-items: center; justify-content: center; gap: 2px; }
+        
+        .import-export-section { display: flex; gap: 12px; padding: 14px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+        .import-btn, .export-btn { flex: 1; min-height: 48px; padding: 12px 16px; border: 2px dashed var(--workday-border); background: white; color: var(--text-secondary); border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; justify-content: center; gap: 8px; touch-action: manipulation; }
+        .import-btn:hover, .export-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--primary-light); transform: translateY(-2px); }
+        .import-btn:active, .export-btn:active { transform: scale(0.98); }
+        .import-btn svg, .export-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 1000; align-items: flex-end; justify-content: center; padding: 0; }
+        @media (min-width: 500px) { .modal-overlay { align-items: center; padding: 20px; } }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--glass-bg-dark); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: var(--radius-lg) var(--radius-lg) 0 0; width: 100%; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+        @media (min-width: 500px) { .modal { border-radius: var(--radius-lg); max-width: 360px; max-height: 80vh; transform: translateY(0); } }
+        .modal-overlay.show .modal { transform: translateY(0); }
+        .modal-header { padding: 18px 20px; border-bottom: 1px solid rgba(0, 0, 0, 0.06); text-align: center; position: sticky; top: 0; background: var(--glass-bg-dark); z-index: 1; }
+        .modal-header h3 { font-size: 1.0625rem; color: var(--text-primary); font-weight: 700; }
+        .modal-header .subtitle { font-size: 0.8125rem; color: var(--text-light); margin-top: 2px; }
+        .modal-body { padding: 20px; }
+        .modal-footer { display: flex; gap: 12px; padding: 16px 20px; padding-bottom: max(16px, calc(var(--safe-bottom) + 10px)); border-top: 1px solid rgba(0, 0, 0, 0.06); position: sticky; bottom: 0; background: var(--glass-bg-dark); }
+        .modal-footer button { flex: 1; min-height: 48px; padding: 12px; border: none; border-radius: var(--radius-md); font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.25s ease; touch-action: manipulation; }
+        .btn-cancel { background: var(--rest-bg); color: var(--text-secondary); }
+        .btn-cancel:hover { background: #E0E0E0; }
+        .btn-cancel:active { transform: scale(0.98); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(91, 155, 213, 0.5); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger-color), #C0392B); color: white; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4); }
+        .btn-danger:hover { transform: translateY(-2px); }
+        
+        .info-display { display: flex; flex-direction: column; gap: 10px; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--primary-light); border-radius: var(--radius-md); }
+        .info-row.highlight { background: linear-gradient(135deg, #FFF8E1, #FFECB3); }
+        .info-row.danger { background: #FFEBEE; }
+        .info-label { font-size: 0.8125rem; color: var(--text-secondary); }
+        .info-value { font-size: 0.9375rem; font-weight: 700; color: var(--text-primary); }
+        .info-value.money { color: var(--success-color); }
+        .info-value.overtime { color: #FF9800; }
+        .overtime-tag-info { display: inline-flex; align-items: center; gap: 4px; background: #FFC107; color: white; padding: 4px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .holiday-tag-info { display: inline-flex; align-items: center; gap: 4px; background: #9C27B0; color: white; padding: 4px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .rest-tag-info { display: inline-flex; align-items: center; gap: 4px; background: var(--text-light); color: white; padding: 4px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-group label { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+        .form-group input { width: 100%; min-height: 48px; padding: 12px 14px; border: 2px solid var(--workday-border); border-radius: var(--radius-md); font-size: 1rem; outline: none; transition: all 0.25s ease; background: white; font-weight: 500; }
+        .form-group input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.2); }
+        .form-group .hint { font-size: 0.6875rem; color: var(--text-light); margin-top: 4px; }
+        .quick-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+        .quick-btn { min-height: 44px; padding: 8px 6px; border: 2px solid; background: white; border-radius: var(--radius-md); font-size: 0.6875rem; font-weight: 600; cursor: pointer; transition: all 0.25s ease; display: flex; flex-direction: column; align-items: center; gap: 2px; touch-action: manipulation; }
+        .quick-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+        .quick-btn:active { transform: scale(0.96); }
+        .quick-btn.full { border-color: var(--success-color); color: var(--success-color); }
+        .quick-btn.full:hover { background: #E8F5E9; }
+        .quick-btn.early { border-color: var(--primary-color); color: var(--primary-color); }
+        .quick-btn.early:hover { background: var(--primary-light); }
+        .quick-btn.ot { border-color: #FF9800; color: #FF9800; }
+        .quick-btn.ot:hover { background: #FFF3E0; }
+        .quick-btn.rest { border-color: var(--text-light); color: var(--text-light); }
+        .quick-btn.rest:hover { background: var(--rest-bg); }
+        .quick-btn-label { font-size: 0.5625rem; font-weight: 400; opacity: 0.8; }
+        @media (min-width: 400px) { .quick-btn { font-size: 0.75rem; padding: 8px 10px; } .quick-btn-label { font-size: 0.625rem; } }
+        
+        .confirm-modal .modal { max-width: 300px; }
+        .confirm-icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .confirm-message { font-size: 0.9375rem; color: var(--text-primary); line-height: 1.5; text-align: center; }
+        .confirm-message strong { color: var(--primary-color); }
+        
+        .toast { position: fixed; top: max(24px, calc(var(--safe-top) + 24px)); left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(44, 62, 80, 0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: white; padding: 12px 24px; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; z-index: 2000; transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); max-width: 90%; text-align: center; white-space: nowrap; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: linear-gradient(135deg, #E74C3C, #C0392B); }
+        .toast.success { background: linear-gradient(135deg, #27AE60, #1E8449); }
+        .toast.loading { background: rgba(44, 62, 80, 0.95); }
+        .toast-content { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .hidden-input { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header"><h1><span>⏰</span> 工时管理</h1></div>
+
+        <div class="month-nav">
+            <button id="prevMonth">‹</button>
+            <span class="current-month" id="currentMonth">2024年1月</span>
+            <button id="nextMonth">›</button>
+        </div>
+
+        <div class="batch-actions">
+            <button id="selectAll">全选</button>
+            <button id="reverseSelect">反选</button>
+            <button id="clearSelection">取消</button>
+            <div class="selected-info" id="selectedInfo">已选 <span class="count" id="selectedCount">0</span> 天</div>
+            <button class="batch-edit-btn" id="batchEditBtn">✏️ 批量修改</button>
+        </div>
+
+        <div class="calendar">
+            <div class="calendar-header">
+                <div class="sunday">周日</div><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div class="saturday">周六</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <div class="color-legend">
+            <div class="legend-item"><div class="legend-dot workday"></div>工作日</div>
+            <div class="legend-item"><div class="legend-dot overtime"></div>加班</div>
+            <div class="legend-item"><div class="legend-dot holiday"></div>节假日</div>
+            <div class="legend-item"><div class="legend-dot rest"></div>休息</div>
+        </div>
+
+        <div class="statistics">
+            <div class="stat-item"><div class="stat-label">⏱ 总工时</div><div class="stat-value" id="totalHours">0h</div></div>
+            <div class="stat-item"><div class="stat-label">⚡ 加班</div><div class="stat-value secondary" id="overtimeHours">0h</div></div>
+            <div class="stat-item rate-item" id="rateItem"><div class="stat-label">💰 时薪</div><div class="stat-value rate"><span id="monthRateValue">25</span>元 ✎</div></div>
+            <div class="stat-item"><div class="stat-label">💵 总薪资</div><div class="stat-value total" id="totalSalary">¥0</div></div>
+        </div>
+
+        <div class="import-export-section">
+            <button class="import-btn" id="importBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                导入
+            </button>
+            <button class="export-btn" id="exportBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                导出
+            </button>
+            <input type="file" class="hidden-input" id="fileInput" accept=".csv,.txt,.xlsx,.xls">
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal">
+            <div class="modal-header"><h3 id="infoModalTitle">📋 日期信息</h3><div class="subtitle" id="infoModalSubtitle"></div></div>
+            <div class="modal-body"><div class="info-display" id="infoDisplay"></div></div>
+            <div class="modal-footer"><button class="btn-cancel" id="closeInfo">关闭</button><button class="btn-primary" id="editFromInfo">编辑</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-header"><h3 id="modalTitle">📝 编辑工时</h3><div class="subtitle" id="modalSubtitle"></div></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>⏱ 工时（小时）</label>
+                    <input type="number" id="editHours" min="0" step="0.5" inputmode="decimal">
+                    <div class="quick-buttons">
+                        <button class="quick-btn full" id="quickFull" type="button">正常<span class="quick-btn-label">10h</span></button>
+                        <button class="quick-btn early" id="quickEarly" type="button">下早班<span class="quick-btn-label">8h</span></button>
+                        <button class="quick-btn rest" id="quickRest" type="button">休息<span class="quick-btn-label">0h</span></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>💰 时薪（元/小时）</label>
+                    <input type="number" id="editRate" min="0" step="0.01" inputmode="decimal">
+                    <div class="hint">将覆盖所有选中日期的时薪</div>
+                </div>
+                <div class="form-group">
+                    <label style="cursor:pointer;">
+                        <input type="checkbox" id="editHoliday" style="width:auto;min-height:auto;margin-right:8px;accent-color:var(--primary-color);">
+                        🎉 是法定节假日（当天工作全部算加班）
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn-cancel" id="cancelEdit">取消</button><button class="btn-primary" id="saveEdit">保存</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rateModal">
+        <div class="modal">
+            <div class="modal-header"><h3>💰 设置当月时薪</h3><div class="subtitle" id="rateModalSubtitle"></div></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>💵 当月时薪（元/小时）</label>
+                    <input type="number" id="editMonthRate" min="0" step="0.01" inputmode="decimal">
+                    <div class="hint">修改后影响当月所有日期的薪资计算</div>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn-cancel" id="cancelRate">取消</button><button class="btn-primary" id="saveRate">保存</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay confirm-modal" id="confirmModal">
+        <div class="modal">
+            <div class="modal-header"><div class="confirm-icon" id="confirmIcon">⚠️</div><h3 id="confirmTitle">确认操作</h3></div>
+            <div class="modal-body"><p class="confirm-message" id="confirmMessage"></p></div>
+            <div class="modal-footer"><button class="btn-cancel" id="confirmCancel">取消</button><button class="btn-primary" id="confirmOk">确认</button></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"><div class="toast-content"></div></div>
+
+    <script>
+        // ==================== 配置常量 ====================
+        // 【修改说明】
+        // 1. 默认时薪：25元/小时
+        // 2. 默认工时：周一至周五10h，周六8h，周日0h
+        // 3. 加班逻辑：周六日、法定节假日全部算加班，周一至周五超过8h的部分算加班
+        
+        // 2026年法定节假日（内置数据）
+        const HOLIDAYS_2026 = [
+            '2026-01-01', '2026-01-02', '2026-01-03',  // 元旦
+            '2026-02-14', '2026-02-15', '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19', '2026-02-20',  // 春节
+            '2026-04-05', '2026-04-06', '2026-04-07',  // 清明
+            '2026-05-01', '2026-05-02', '2026-05-03', '2026-05-04', '2026-05-05',  // 劳动节
+            '2026-06-19', '2026-06-20', '2026-06-21',  // 端午
+            '2026-09-18', '2026-09-19', '2026-09-20',  // 中秋
+            '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07'   // 国庆
+        ];
+        
+        const DEFAULT_HOURLY_RATE = 25;
+        const DEFAULT_WORKDAY_HOURS = 10;   // 周一至周五默认10小时
+        const DEFAULT_SATURDAY_HOURS = 8;  // 周六默认8小时
+        const DEFAULT_WEEKEND_HOURS = 0;    // 周日默认0小时
+
+        const STORAGE_KEY = 'workHourData';
+        const MONTH_RATE_KEY = 'workHourMonthRate';
+        const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth();
+        let selectedDates = new Set();
+        let workData = {};
+        let monthRate = {};
+        let pendingEditKeys = [];
+
+        function isStorageAvailable() {
+            try { localStorage.setItem('__t__', '1'); localStorage.removeItem('__t__'); return true; }
+            catch (e) { return false; }
+        }
+
+        function init() {
+            if (!isStorageAvailable()) showToast('⚠️ 本地存储不可用', 'error');
+            loadMonthRate();
+            loadData();
+            generateInitialData();
+            renderCalendar();
+            updateStatistics();
+            bindEvents();
+        }
+
+        function getMonthRateKey(y, m) { return `${y}-${m}`; }
+        function getCurrentMonthRate() { return monthRate[getMonthRateKey(currentYear, currentMonth)] || DEFAULT_HOURLY_RATE; }
+
+        function loadMonthRate() {
+            try { const s = localStorage.getItem(MONTH_RATE_KEY); if (s) monthRate = JSON.parse(s); }
+            catch (e) { monthRate = {}; }
+        }
+        function saveMonthRate() {
+            try { localStorage.setItem(MONTH_RATE_KEY, JSON.stringify(monthRate)); }
+            catch (e) { showToast('保存失败', 'error'); }
+        }
+
+        function getDateKey(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+        function parseDateKey(k) { const [y, m, d] = k.split('-').map(Number); return { year: y, month: m - 1, day: d }; }
+
+        function loadData() {
+            try { const s = localStorage.getItem(STORAGE_KEY); if (s) workData = JSON.parse(s); }
+            catch (e) { workData = {}; }
+        }
+        function saveData() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(workData)); }
+            catch (e) { showToast('保存失败', 'error'); }
+        }
+
+        // 【修改】根据星期获取默认工时
+        function getDefaultHours(date) {
+            const dow = date.getDay();
+            if (dow === 0) return DEFAULT_WEEKEND_HOURS;      // 周日0小时
+            if (dow === 6) return DEFAULT_SATURDAY_HOURS;   // 周六8小时
+            return DEFAULT_WORKDAY_HOURS;                       // 周一至周五10小时
+        }
+
+        // 【修改】加班计算逻辑
+        // 法定节假日、周六周日：全部工时都算加班
+        // 周一至周五：超过8小时的部分算加班
+        function calcOvertime(date, hours, isHoliday) {
+            const dow = date.getDay();
+            if (isHoliday) return hours;  // 法定节假日全部算加班
+            if (dow === 0 || dow === 6) return hours;  // 周六日全部算加班
+            return hours > 8 ? hours - 8 : 0;            // 工作日超过8小时的部分
+        }
+
+        // 【修改】日期类型判断
+        function getDayType(date, hours, isHoliday) {
+            const dow = date.getDay();
+            if (hours === 0) return 'rest';
+            if (isHoliday) return 'holiday';  // 法定节假日
+            if (dow === 0 || dow === 6) return 'overtime';  // 周六日有工时就是加班日
+            if (hours > 8) return 'overtime';                 // 工作日超过8小时也算加班日
+            return 'workday';
+        }
+        
+        // 检查是否为法定节假日
+        function isHoliday(date) {
+            const key = getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+            const data = workData[key];
+            // 如果数据中有明确的isHoliday设置，优先使用
+            if (data && typeof data.isHoliday !== 'undefined') {
+                return data.isHoliday;
+            }
+            // 否则检查内置节假日列表
+            return HOLIDAYS_2026.includes(key);
+        }
+
+        function getMonthRateForDate(y, m) { return monthRate[getMonthRateKey(y, m)] || DEFAULT_HOURLY_RATE; }
+        function getSalary(h, r) { return h * r; }
+
+        function generateInitialData() {
+            const today = new Date();
+            for (let i = 0; i < 180; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                const key = getDateKey(d.getFullYear(), d.getMonth(), d.getDate());
+                if (!workData[key]) {
+                    const isHolidayDate = HOLIDAYS_2026.includes(key);
+                    workData[key] = {
+                        hours: getDefaultHours(d),
+                        hourlyRate: getMonthRateForDate(d.getFullYear(), d.getMonth()),
+                        isHoliday: isHolidayDate  // 自动标记节假日
+                    };
+                }
+            }
+            saveData();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === currentYear && today.getMonth() === currentMonth;
+
+            document.getElementById('currentMonth').textContent = `${currentYear}年${MONTH_NAMES[currentMonth]}`;
+            document.getElementById('monthRateValue').textContent = getCurrentMonthRate();
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(Object.assign(document.createElement('div'), { className: 'calendar-cell empty' }));
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(currentYear, currentMonth, day);
+                const key = getDateKey(currentYear, currentMonth, day);
+                const dow = date.getDay();
+
+                const data = workData[key] || {
+                    hours: getDefaultHours(date),
+                    hourlyRate: getMonthRateForDate(currentYear, currentMonth),
+                    isHoliday: HOLIDAYS_2026.includes(key)
+                };
+                const dayType = getDayType(date, data.hours, data.isHoliday);
+                const otHours = calcOvertime(date, data.hours, data.isHoliday);
+                const salary = getSalary(data.hours, data.hourlyRate);
+                const isSelected = selectedDates.has(key);
+
+                const cell = document.createElement('div');
+                cell.className = `calendar-cell ${dayType}${isSelected ? ' selected' : ''}`;
+                cell.dataset.key = key;
+
+                // 【优化】单元格布局：日期 + 工时 + 时薪 + 加班（带图标）
+                let html = `
+                    <div class="cell-date">${day}</div>
+                    <div class="cell-hours">⏰ ${data.hours}h</div>
+                    <div class="cell-rate">💰 ${data.hourlyRate}元</div>
+                    ${otHours > 0 ? `<div class="cell-overtime">🌸 ${otHours}h</div>` : ''}
+                `;
+
+                // 节假日图标 - 右上角
+                if (data.isHoliday) {
+                    html += `<div class="holiday-icon">🎉</div>`;
+                }
+
+                if (isCurrentMonth && day === today.getDate()) {
+                    html += `<div class="today-indicator"></div>`;
+                }
+                html += `<div class="selected-check">✓</div>`;
+
+                cell.innerHTML = html;
+                cell.addEventListener('click', handleCellClick, { passive: true });
+                grid.appendChild(cell);
+            }
+
+            updateBatchUI();
+        }
+
+        function updateBatchUI() {
+            const count = selectedDates.size;
+            const infoEl = document.getElementById('selectedInfo');
+            const countEl = document.getElementById('selectedCount');
+            const editBtn = document.getElementById('batchEditBtn');
+
+            if (count > 0) {
+                infoEl.classList.add('show');
+                countEl.textContent = count;
+                editBtn.classList.add('show');
+            } else {
+                infoEl.classList.remove('show');
+                editBtn.classList.remove('show');
+            }
+        }
+
+        function updateStatistics() {
+            const days = new Date(currentYear, currentMonth + 1, 0).getDate();
+            let totalH = 0, otH = 0, totalS = 0;
+
+            for (let d = 1; d <= days; d++) {
+                const key = getDateKey(currentYear, currentMonth, d);
+                const date = new Date(currentYear, currentMonth, d);
+                const data = workData[key];
+                if (data) {
+                    const isHolidayDate = data.isHoliday || false;
+                    totalH += data.hours;
+                    otH += calcOvertime(date, data.hours, isHolidayDate);
+                    totalS += getSalary(data.hours, data.hourlyRate);
+                }
+            }
+
+            document.getElementById('totalHours').textContent = `${totalH.toFixed(1)}h`;
+            document.getElementById('overtimeHours').textContent = `${otH.toFixed(1)}h`;
+            document.getElementById('totalSalary').textContent = `¥${totalS.toFixed(0)}`;
+            document.getElementById('monthRateValue').textContent = getCurrentMonthRate();
+        }
+
+        function bindEvents() {
+            document.getElementById('prevMonth').addEventListener('click', prevMonth);
+            document.getElementById('nextMonth').addEventListener('click', nextMonth);
+            document.getElementById('selectAll').addEventListener('click', selectAll);
+            document.getElementById('reverseSelect').addEventListener('click', reverseSelect);
+            document.getElementById('clearSelection').addEventListener('click', handleClearSelection);
+            document.getElementById('batchEditBtn').addEventListener('click', openBatchEdit);
+
+            document.getElementById('closeInfo').addEventListener('click', () => document.getElementById('infoModal').classList.remove('show'));
+            document.getElementById('editFromInfo').addEventListener('click', openEditFromInfo);
+
+            document.getElementById('cancelEdit').addEventListener('click', () => document.getElementById('editModal').classList.remove('show'));
+            document.getElementById('saveEdit').addEventListener('click', saveEdit);
+            // 【修改】快捷按钮：正常10h、下早班8h、休息0h（已删除"加班8h"）
+            document.getElementById('quickFull').addEventListener('click', () => setQuickHours(10));
+            document.getElementById('quickEarly').addEventListener('click', () => setQuickHours(8));
+            document.getElementById('quickRest').addEventListener('click', () => setQuickHours(0));
+
+            document.getElementById('confirmCancel').addEventListener('click', () => document.getElementById('confirmModal').classList.remove('show'));
+
+            document.getElementById('rateItem').addEventListener('click', openRateModal);
+            document.getElementById('cancelRate').addEventListener('click', () => document.getElementById('rateModal').classList.remove('show'));
+            document.getElementById('saveRate').addEventListener('click', saveMonthRateValue);
+
+            document.getElementById('importBtn').addEventListener('click', triggerFileInput);
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+            document.getElementById('fileInput').addEventListener('change', handleFileImport);
+
+            ['infoModal', 'editModal', 'rateModal', 'confirmModal'].forEach(id => {
+                document.getElementById(id).addEventListener('click', e => {
+                    if (e.target.classList.contains('modal-overlay')) document.getElementById(id).classList.remove('show');
+                });
+            });
+
+            document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+        }
+
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            selectedDates.clear();
+            renderCalendar();
+            updateStatistics();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            selectedDates.clear();
+            renderCalendar();
+            updateStatistics();
+        }
+
+        function setQuickHours(h) { document.getElementById('editHours').value = h; }
+
+        function handleCellClick(e) {
+            const cell = e.currentTarget;
+            const key = cell.dataset.key;
+            if (selectedDates.size > 0) {
+                if (selectedDates.has(key)) { selectedDates.delete(key); cell.classList.remove('selected'); }
+                else { selectedDates.add(key); cell.classList.add('selected'); }
+                updateBatchUI();
+            } else {
+                openInfoModal([key]);
+            }
+        }
+
+        function selectAll() {
+            const days = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let d = 1; d <= days; d++) selectedDates.add(getDateKey(currentYear, currentMonth, d));
+            renderCalendar();
+            showToast(`已选中 ${selectedDates.size} 天`, 'success');
+        }
+
+        function reverseSelect() {
+            const days = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let d = 1; d <= days; d++) {
+                const key = getDateKey(currentYear, currentMonth, d);
+                if (selectedDates.has(key)) selectedDates.delete(key);
+                else selectedDates.add(key);
+            }
+            renderCalendar();
+            updateBatchUI();
+        }
+
+        function handleClearSelection() {
+            if (selectedDates.size > 0) { selectedDates.clear(); renderCalendar(); }
+            else selectAll();
+        }
+
+        function openBatchEdit() {
+            if (selectedDates.size === 0) return;
+            openEditModal([...selectedDates]);
+        }
+
+        function openInfoModal(keys) {
+            pendingEditKeys = keys;
+            const display = document.getElementById('infoDisplay');
+
+            if (keys.length === 1) {
+                const { year, month, day } = parseDateKey(keys[0]);
+                const date = new Date(year, month, day);
+                const dow = date.getDay();
+                const data = workData[keys[0]] || { hours: getDefaultHours(date), hourlyRate: getMonthRateForDate(year, month), isHoliday: HOLIDAYS_2026.includes(keys[0]) };
+                const dayType = getDayType(date, data.hours, data.isHoliday);
+                const otHours = calcOvertime(date, data.hours, data.isHoliday);
+                const salary = getSalary(data.hours, data.hourlyRate);
+
+                document.getElementById('infoModalTitle').textContent = `📋 ${year}年${MONTH_NAMES[month]}${day}日`;
+                document.getElementById('infoModalSubtitle').textContent = WEEKDAY_NAMES[dow];
+                document.getElementById('editFromInfo').textContent = '编辑';
+
+                let typeTag = dayType === 'rest' ? '<span class="rest-tag-info">🏠 休息日</span>' : 
+                              dayType === 'holiday' ? '<span class="holiday-tag-info">🎉 节假日</span>' : 
+                              dayType === 'overtime' ? '<span class="overtime-tag-info">⚡ 加班日</span>' : 
+                              '<span style="color:var(--primary-color)">💼 工作日</span>';
+
+                display.innerHTML = `
+                    <div class="info-row"><span class="info-label">⏱ 工时</span><span class="info-value">${data.hours} 小时</span></div>
+                    <div class="info-row"><span class="info-label">💰 时薪</span><span class="info-value">${data.hourlyRate} 元/小时</span></div>
+                    <div class="info-row"><span class="info-label">💵 薪资</span><span class="info-value money">¥${salary.toFixed(0)}</span></div>
+                    ${otHours > 0 ? `<div class="info-row highlight"><span class="info-label">⚡ 加班工时</span><span class="info-value overtime">${otHours} 小时</span></div>` : ''}
+                    <div class="info-row"><span class="info-label">📅 类型</span>${typeTag}</div>
+                    ${data.isHoliday ? `<div class="info-row highlight"><span class="info-label">🎉 节假日</span><span class="info-value" style="color:#9C27B0">法定节假日全天算加班</span></div>` : ''}
+                `;
+            } else {
+                document.getElementById('infoModalTitle').textContent = `📋 批量信息`;
+                document.getElementById('infoModalSubtitle').textContent = `已选中 ${keys.length} 个日期`;
+                document.getElementById('editFromInfo').textContent = '批量编辑';
+
+                let totalH = 0, totalOT = 0, totalS = 0;
+                keys.forEach(k => {
+                    const { year, month, day } = parseDateKey(k);
+                    const date = new Date(year, month, day);
+                    const data = workData[k] || { hours: getDefaultHours(date), hourlyRate: getMonthRateForDate(year, month), isHoliday: HOLIDAYS_2026.includes(k) };
+                    totalH += data.hours;
+                    totalOT += calcOvertime(date, data.hours, data.isHoliday);
+                    totalS += getSalary(data.hours, data.hourlyRate);
+                });
+
+                display.innerHTML = `
+                    <div class="info-row"><span class="info-label">📅 选中天数</span><span class="info-value">${keys.length} 天</span></div>
+                    <div class="info-row"><span class="info-label">⏱ 总工时</span><span class="info-value">${totalH.toFixed(1)} 小时</span></div>
+                    <div class="info-row highlight"><span class="info-label">⚡ 总加班</span><span class="info-value overtime">${totalOT.toFixed(1)} 小时</span></div>
+                    <div class="info-row"><span class="info-label">💵 预计薪资</span><span class="info-value money">¥${totalS.toFixed(0)}</span></div>
+                `;
+            }
+
+            document.getElementById('infoModal').classList.add('show');
+        }
+
+        function openEditFromInfo() {
+            document.getElementById('infoModal').classList.remove('show');
+            openEditModal(pendingEditKeys);
+        }
+
+        function openEditModal(keys) {
+            pendingEditKeys = keys;
+
+            if (keys.length === 1) {
+                const { year, month, day } = parseDateKey(keys[0]);
+                const date = new Date(year, month, day);
+                document.getElementById('modalTitle').textContent = '📝 编辑工时';
+                document.getElementById('modalSubtitle').textContent = `${year}年${MONTH_NAMES[month]}${day}日 ${WEEKDAY_NAMES[date.getDay()]}`;
+            } else {
+                document.getElementById('modalTitle').textContent = `📝 批量修改 (${keys.length}天)`;
+                document.getElementById('modalSubtitle').textContent = '统一设置工时、时薪和节假日';
+            }
+
+            const firstKey = keys[0];
+            const { year, month, day } = parseDateKey(firstKey);
+            const data = workData[firstKey] || { hours: getDefaultHours(new Date(year, month, day)), hourlyRate: getMonthRateForDate(year, month), isHoliday: HOLIDAYS_2026.includes(firstKey) };
+            document.getElementById('editHours').value = data.hours;
+            document.getElementById('editRate').value = data.hourlyRate;
+            document.getElementById('editHoliday').checked = !!data.isHoliday;
+
+            document.getElementById('editModal').classList.add('show');
+            document.getElementById('editHours').focus();
+        }
+
+        function saveEdit() {
+            const hours = parseFloat(document.getElementById('editHours').value);
+            const rate = parseFloat(document.getElementById('editRate').value);
+            const isHoliday = document.getElementById('editHoliday').checked;
+
+            if (isNaN(hours) || hours < 0) { showToast('请输入有效的工时', 'error'); return; }
+            if (isNaN(rate) || rate < 0) { showToast('请输入有效的时薪', 'error'); return; }
+
+            if (pendingEditKeys.length > 1) {
+                showConfirm('⚠️', `确定修改 <strong>${pendingEditKeys.length}</strong> 天？`, () => doSaveEdit(hours, rate, isHoliday));
+            } else {
+                doSaveEdit(hours, rate, isHoliday);
+            }
+        }
+
+        function doSaveEdit(hours, rate, isHoliday) {
+            pendingEditKeys.forEach(k => { 
+                workData[k] = { hours, hourlyRate: rate, isHoliday }; 
+            });
+            saveData();
+            selectedDates.clear();
+            document.getElementById('editModal').classList.remove('show');
+            renderCalendar();
+            updateStatistics();
+            showToast(`已保存 ${pendingEditKeys.length} 条`, 'success');
+        }
+
+        let confirmCallback = null;
+        function showConfirm(icon, msg, onOk, isDanger = false) {
+            document.getElementById('confirmIcon').textContent = icon;
+            document.getElementById('confirmMessage').innerHTML = msg;
+            confirmCallback = onOk;
+            const okBtn = document.getElementById('confirmOk');
+            okBtn.className = isDanger ? 'btn-danger' : 'btn-primary';
+            okBtn.onclick = () => { document.getElementById('confirmModal').classList.remove('show'); if (confirmCallback) confirmCallback(); };
+            document.getElementById('confirmModal').classList.add('show');
+        }
+
+        function openRateModal() {
+            document.getElementById('rateModalSubtitle').textContent = `${currentYear}年${MONTH_NAMES[currentMonth]}`;
+            document.getElementById('editMonthRate').value = getCurrentMonthRate();
+            document.getElementById('rateModal').classList.add('show');
+            document.getElementById('editMonthRate').focus();
+        }
+
+        function saveMonthRateValue() {
+            const rate = parseFloat(document.getElementById('editMonthRate').value);
+            if (isNaN(rate) || rate < 0) { showToast('请输入有效时薪', 'error'); return; }
+            const key = getMonthRateKey(currentYear, currentMonth);
+            monthRate[key] = rate;
+            saveMonthRate();
+            const days = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let d = 1; d <= days; d++) {
+                const dateKey = getDateKey(currentYear, currentMonth, d);
+                if (workData[dateKey]) workData[dateKey].hourlyRate = rate;
+            }
+            saveData();
+            document.getElementById('rateModal').classList.remove('show');
+            renderCalendar();
+            updateStatistics();
+            showToast('时薪已更新', 'success');
+        }
+
+        // 【优化】动态创建文件选择器，兼容安卓WebView
+        function triggerFileInput() {
+            // 创建临时input元素
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.csv,.txt,.xlsx,.xls';
+            fileInput.style.cssText = 'position:absolute;top:-9999px;left:-9999px;opacity:0;';
+            
+            // 监听文件选择
+            fileInput.onchange = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    processImportFile(file);
+                }
+                // 清理
+                document.body.removeChild(fileInput);
+            };
+            
+            // 添加到DOM并触发
+            document.body.appendChild(fileInput);
+            
+            // 兼容处理：延迟触发点击
+            setTimeout(() => {
+                try {
+                    fileInput.click();
+                } catch (err) {
+                    console.error('文件选择器触发失败:', err);
+                    showToast('无法打开文件选择器，请检查权限', 'error');
+                }
+            }, 50);
+            
+            // 超时清理
+            setTimeout(() => {
+                if (fileInput.parentNode) {
+                    document.body.removeChild(fileInput);
+                }
+            }, 30000);
+        }
+        
+        function processImportFile(file) {
+            showToast('正在导入...', 'loading');
+            const reader = new FileReader();
+            reader.onload = ev => { 
+                try { parseCSV(ev.target.result); } 
+                catch (err) { 
+                    console.error('文件解析失败:', err);
+                    showToast('文件解析失败', 'error'); 
+                } 
+            };
+            reader.onerror = () => {
+                console.error('文件读取失败');
+                showToast('文件读取失败', 'error');
+            };
+            reader.readAsText(file);
+        }
+
+        function handleFileImport(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            processImportFile(file);
+        }
+
+        function parseCSV(content) {
+            const lines = content.trim().split(/\r?\n/);
+            let imported = 0;
+            for (const line of lines) {
+                if (!line || line.startsWith('#')) continue;
+                const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+                if (parts.length < 2) continue;
+                let date = null;
+                const dateStr = parts[0].trim();
+                const hours = parseFloat(parts[1].trim());
+                if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)) date = new Date(dateStr);
+                else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(dateStr)) date = new Date(dateStr);
+                else if (/^\d{1,2}[\/\-]\d{1,2}$/.test(dateStr)) {
+                    const [m, d] = dateStr.split(/[\/\-]/).map(Number);
+                    date = new Date(new Date().getFullYear(), m - 1, d);
+                }
+                if (date && !isNaN(date.getTime()) && !isNaN(hours) && hours >= 0) {
+                    const key = getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+                    let rate = getMonthRateForDate(date.getFullYear(), date.getMonth());
+                    if (parts.length >= 3) { const r = parseFloat(parts[2].trim()); if (!isNaN(r) && r >= 0) rate = r; }
+                    let isHolidayFlag = HOLIDAYS_2026.includes(key);  // 默认继承节假日
+                    if (parts.length >= 4) { 
+                        const h = parts[3].trim().toLowerCase();
+                        if (h === '是' || h === '1' || h === 'true') isHolidayFlag = true;
+                        if (h === '否' || h === '0' || h === 'false') isHolidayFlag = false;
+                    }
+                    workData[key] = { hours, hourlyRate: rate, isHoliday: isHolidayFlag };
+                    imported++;
+                }
+            }
+            if (imported > 0) { saveData(); renderCalendar(); updateStatistics(); showToast(`✅ 导入成功 ${imported} 条`, 'success'); }
+            else { showToast('未找到有效数据', 'error'); }
+        }
+
+        function exportData() {
+            showToast('正在生成...', 'loading');
+            try {
+                const allData = [];
+                Object.keys(workData).sort().forEach(key => {
+                    const { year, month, day } = parseDateKey(key);
+                    const date = new Date(year, month, day);
+                    const dow = date.getDay();
+                    const data = workData[key];
+                    const isHolidayDate = data.isHoliday || false;
+                    const otHours = calcOvertime(date, data.hours, isHolidayDate);
+                    const dayType = getDayType(date, data.hours, isHolidayDate);
+                    allData.push({
+                        date: key, weekday: WEEKDAY_NAMES[dow], hours: data.hours,
+                        hourlyRate: data.hourlyRate, salary: getSalary(data.hours, data.hourlyRate),
+                        isHoliday: isHolidayDate ? '是' : '否',
+                        isOvertime: dayType === 'holiday' || dayType === 'overtime' ? '是' : '否', 
+                        overtimeHours: otHours
+                    });
+                });
+                let csv = '\uFEFF日期,星期,工时,时薪,薪资,节假日,加班,加班工时\n';
+                allData.forEach(r => { csv += `${r.date},${r.weekday},${r.hours},${r.hourlyRate},${r.salary.toFixed(2)},${r.isHoliday},${r.isOvertime},${r.overtimeHours}\n`; });
+                const totalH = allData.reduce((s, r) => s + r.hours, 0);
+                const totalS = allData.reduce((s, r) => s + r.salary, 0);
+                const totalOT = allData.reduce((s, r) => s + r.overtimeHours, 0);
+                csv += `\n汇总,,${totalH.toFixed(1)},,${totalS.toFixed(2)},,,${totalOT.toFixed(1)}\n`;
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const now = new Date();
+                a.href = url;
+                a.download = `工时数据_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.csv`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                // 【优化】导出提示信息
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    showToast(`✅ 已生成 ${allData.length} 条，文件保存至下载目录`, 'success');
+                } else {
+                    showToast(`✅ 导出成功 ${allData.length} 条`, 'success');
+                }
+            } catch (err) { 
+                console.error('导出失败:', err);
+                showToast('导出失败', 'error'); 
+            }
+        }
+
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            const content = toast.querySelector('.toast-content');
+            toast.className = 'toast';
+            if (type) toast.classList.add(type);
+            content.innerHTML = type === 'loading' ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), type === 'loading' ? 10000 : 2500);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
 </html>
